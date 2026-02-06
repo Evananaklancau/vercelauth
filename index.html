@@ -79,4 +79,17 @@
                 });
 
                 if(pushRes.ok) {
-                    addLog("SUCCESS: Kode berhasil di
+                    addLog("SUCCESS: Kode berhasil di-push ke GitHub!");
+                    addLog("Vercel akan mendeteksi perubahan dan redeploy otomatis dalam 30 detik.");
+                } else {
+                    const errorData = await pushRes.json();
+                    addLog("ERROR: " + errorData.message);
+                }
+
+            } catch (err) {
+                addLog("CRITICAL ERROR: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
