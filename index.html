@@ -2,94 +2,174 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>INVICTUS - GitHub Deployer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INVICTUS | GitHub Master Controller</title>
     <style>
-        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; padding: 20px; }
-        .box { border: 1px solid #00ff41; padding: 20px; margin-bottom: 20px; background: #0a0a0a; }
-        input, textarea { width: 100%; background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; margin: 10px 0; outline: none; }
-        textarea { height: 300px; }
-        button { background: #00ff41; color: #000; padding: 10px 20px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
-        button:hover { background: #fff; }
-        .log { background: #111; padding: 10px; font-size: 12px; height: 100px; overflow-y: auto; border: 1px solid #333; }
+        :root { --color: #00ff41; --bg: #050505; --border: #222; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--color); font-family: 'Courier New', monospace; margin: 0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 900px; margin: auto; }
+        .header { border-bottom: 2px solid var(--color); padding-bottom: 10px; margin-bottom: 30px; text-shadow: 0 0 10px var(--color); }
+        .card { background: #0a0a0a; border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        h3 { margin-top: 0; color: #fff; border-left: 4px solid var(--color); padding-left: 10px; }
+        
+        label { display: block; margin: 15px 0 5px; font-size: 12px; color: #888; text-transform: uppercase; }
+        input, textarea { width: 100%; background: #000; border: 1px solid var(--border); color: var(--color); padding: 12px; outline: none; transition: 0.3s; }
+        input:focus, textarea:focus { border-color: var(--color); box-shadow: 0 0 10px rgba(0,255,65,0.2); }
+        textarea { height: 350px; font-size: 14px; }
+        
+        .btn-zone { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        button { padding: 15px; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .btn-deploy { background: var(--color); color: #000; }
+        .btn-deploy:hover { background: #fff; box-shadow: 0 0 20px var(--color); }
+        .btn-reset { background: #ff0000; color: #fff; }
+        
+        .console { background: #000; border: 1px solid #111; padding: 15px; height: 180px; overflow-y: auto; font-size: 12px; color: #00ff41; border-radius: 4px; }
+        .success { color: #ffff00; font-weight: bold; }
+        .error { color: #ff3333; font-weight: bold; }
+        .info { color: #00bcff; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h2>GITHUB REMOTE COMMANDER</h2>
-        <label>Personal Access Token (PAT):</label>
-        <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
-        
-        <label>Repo Path (Owner/RepoName):</label>
-        <input type="text" id="ghRepo" placeholder="username/repository-target">
-        
-        <label>File to Inject (e.g., index.html):</label>
-        <input type="text" id="ghPath" value="index.html">
+<div class="container">
+    <div class="header">
+        <h1>INVICTUS CLOUD-INJECTOR v5.0</h1>
+        <p>Bypass Limit | No Filter | Auto-Deploy Vercel</p>
     </div>
 
-    <div class="box">
-        <h2>PAYLOAD EDITOR (Auto Vercel Deploy)</h2>
-        <textarea id="payloadCode" placeholder="Masukkan full code HTML/JS baru di sini..."></textarea>
-        <button onclick="commitToGithub()">PUSH & REDEPLOY VERCEL</button>
+    <div class="card">
+        <h3>1. GITHUB AUTHENTICATION</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+                <label>GitHub Personal Access Token</label>
+                <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxx">
+            </div>
+            <div>
+                <label>Repository (User/Repo)</label>
+                <input type="text" id="repo" placeholder="Raffi/my-web-project">
+            </div>
+        </div>
+        <label>Target File Path</label>
+        <input type="text" id="path" value="index.html" placeholder="e.g. index.html">
     </div>
 
-    <div class="log" id="statusLog">> System Ready...</div>
+    <div class="card">
+        <h3>2. PAYLOAD ENGINE</h3>
+        <label>Inject New Source Code (HTML/JS)</label>
+        <textarea id="payload" placeholder=""></textarea>
+        
+        <div class="btn-zone">
+            <button class="btn-deploy" onclick="masterDeploy()">Push & Trigger Vercel</button>
+            <button class="btn-reset" onclick="clearConsole()">Clear Console</button>
+        </div>
+    </div>
 
-    <script>
-        function addLog(msg) {
-            const log = document.getElementById('statusLog');
-            log.innerHTML += `<div>> ${msg}</div>`;
-            log.scrollTop = log.scrollHeight;
+    <div class="card">
+        <h3>3. SYSTEM TERMINAL</h3>
+        <div class="console" id="terminal">
+            <div>> System standing by. Ready for deployment...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const term = document.getElementById('terminal');
+
+    function print(msg, type = '') {
+        const time = new Date().toLocaleTimeString();
+        const div = document.createElement('div');
+        if(type) div.className = type;
+        div.innerHTML = `[${time}] > ${msg}`;
+        term.appendChild(div);
+        term.scrollTop = term.scrollHeight;
+    }
+
+    function clearConsole() {
+        term.innerHTML = '<div>> Console cleared. Ready.</div>';
+    }
+
+    async function masterDeploy() {
+        const token = document.getElementById('token').value.trim();
+        const repo = document.getElementById('repo').value.trim();
+        const path = document.getElementById('path').value.trim();
+        const content = document.getElementById('payload').value;
+
+        if(!token || !repo || !content) {
+            return print("CRITICAL: Data input tidak lengkap!", "error");
         }
 
-        async function commitToGithub() {
-            const token = document.getElementById('ghToken').value;
-            const repo = document.getElementById('ghRepo').value;
-            const path = document.getElementById('ghPath').value;
-            const newContent = document.getElementById('payloadCode').value;
+        print("Inisialisasi koneksi ke GitHub API...", "info");
 
-            if(!token || !repo || !newContent) return alert("Data tidak lengkap!");
-
-            addLog("Memulai proses injeksi ke GitHub...");
-
-            try {
-                // 1. Ambil SHA file lama (Wajib untuk update file di GitHub API)
-                const getUrl = `https://api.github.org/repos/${repo}/contents/${path}`;
-                const res = await fetch(getUrl, {
-                    headers: { "Authorization": `token ${token}` }
-                });
-                const data = await res.json();
-                const sha = data.sha;
-
-                addLog("File SHA ditemukan: " + sha);
-
-                // 2. Push Update
-                const updateUrl = `https://api.github.org/repos/${repo}/contents/${path}`;
-                const pushRes = await fetch(updateUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": `token ${token}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        message: "update: system optimization", // Pesan commit samaran
-                        content: btoa(unescape(encodeURIComponent(newContent))), // Encode ke Base64
-                        sha: sha
-                    })
-                });
-
-                if(pushRes.ok) {
-                    addLog("SUCCESS: Kode berhasil di-push ke GitHub!");
-                    addLog("Vercel akan mendeteksi perubahan dan redeploy otomatis dalam 30 detik.");
-                } else {
-                    const errorData = await pushRes.json();
-                    addLog("ERROR: " + errorData.message);
+        try {
+            const url = `https://api.github.org/repos/${repo}/contents/${path}`;
+            
+            // 1. Fetching SHA (Mencegah Error 409 Conflict)
+            print("Mengambil SHA file dari repository...");
+            const getRes = await fetch(url, {
+                headers: { 
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/vnd.github.v3+json"
                 }
+            });
 
-            } catch (err) {
-                addLog("CRITICAL ERROR: " + err.message);
+            if(!getRes.ok) {
+                const errData = await getRes.json();
+                throw new Error(`GitHub: ${errData.message}`);
             }
+
+            const fileData = await getRes.json();
+            const sha = fileData.sha;
+            print(`SHA ditemukan: ${sha}`, "success");
+
+            // 2. Encoding Payload (UTF-8 to Base64 Bypass)
+            print("Encoding payload ke Base64...");
+            const bytes = new TextEncoder().encode(content);
+            const base64 = btoa(String.fromCharCode(...bytes));
+
+            // 3. Executing Commit/Push
+            print("Melakukan injeksi kode ke GitHub...");
+            const pushRes = await fetch(url, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.github.v3+json"
+                },
+                body: JSON.stringify({
+                    message: "refactor: optimize system performance",
+                    content: base64,
+                    sha: sha
+                })
+            });
+
+            const pushResult = await pushRes.json();
+
+            if(pushRes.ok) {
+                print("INJEKSI BERHASIL!", "success");
+                print(`Commit: ${pushResult.commit.sha.substring(0,7)}`, "info");
+                print("Vercel mendeteksi perubahan. Proses re-deploy dimulai otomatis.", "success");
+            } else {
+                throw new Error(`GitHub Reject: ${pushResult.message}`);
+            }
+
+        } catch (err) {
+            print(err.message, "error");
+            console.error(err);
         }
-    </script>
+    }
+
+    // Auto-save setting sederhana
+    document.addEventListener('input', () => {
+        localStorage.setItem('iv_token', document.getElementById('token').value);
+        localStorage.setItem('iv_repo', document.getElementById('repo').value);
+    });
+
+    window.onload = () => {
+        if(localStorage.getItem('iv_token')) document.getElementById('token').value = localStorage.getItem('iv_token');
+        if(localStorage.getItem('iv_repo')) document.getElementById('repo').value = localStorage.getItem('iv_repo');
+    };
+</script>
+
 </body>
 </html>
